@@ -1,6 +1,6 @@
 ---
 name: pbi-context
-description: Loads the Azure DevOps work item behind the current git branch, whether the branch number is a task or a PBI, with its backlog item, sibling tasks, Feature, Epic and related items; assembles the acceptance criteria wherever they are written (criteria field or description) and checks the branch's changes against them. Use when asked what the current PBI, task, ticket or work item says, what the acceptance criteria are, or whether the branch builds the right thing.
+description: Reads the Azure DevOps work item (PBI, user story, bug or task) behind the current git branch and checks the branch's changes against its acceptance criteria. Use when asked about the current ticket or its acceptance criteria (AC, acceptatiecriteria), or whether the branch builds what it asks. Read-only; not for creating or updating work items.
 license: MIT
 ---
 
