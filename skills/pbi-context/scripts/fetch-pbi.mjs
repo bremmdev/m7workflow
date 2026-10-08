@@ -22,12 +22,16 @@
 // Read-only: it only sends GET requests and never changes a work item.
 // Requires Node 18+ (global fetch). See references/setup.md for configuration.
 
-import { execFileSync } from "node:child_process";
+import { execFileSync, execSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 const API = "api-version=7.1";
 const ADO_RESOURCE = "499b84ac-1321-427f-aa17-267ca6975798"; // Azure DevOps app id for Entra tokens
 const MAX_LEVELS = 4;
+// Without a limit, a hanging `az` (waiting for a sign-in prompt) or an unreachable host
+// (a proxy Node's fetch does not use) blocks the script until the caller gives up.
+const AZ_TIMEOUT_MS = 30_000;
+const HTTP_TIMEOUT_MS = 30_000;
 
 // Portfolio levels sit above backlog items. A work item whose parent is NOT one of these
 // (a Task under a PBI, a Bug under a User Story) is treated as part of that parent.
@@ -102,15 +106,22 @@ function safeBranch(branch, id) {
 function authHeader() {
   const pat = process.env.AZURE_DEVOPS_EXT_PAT;
   if (pat) return `Basic ${Buffer.from(`:${pat}`).toString("base64")}`;
+  const azArgs = ["account", "get-access-token", "--resource", ADO_RESOURCE, "--query", "accessToken", "-o", "tsv"];
+  const options = { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], windowsHide: true, timeout: AZ_TIMEOUT_MS };
   try {
-    const token = execFileSync(
-      "az",
-      ["account", "get-access-token", "--resource", ADO_RESOURCE, "--query", "accessToken", "-o", "tsv"],
-      { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], shell: process.platform === "win32" }
+    // On Windows az is az.cmd, which needs a shell; the arguments are constants, so one string is safe.
+    const token = (
+      process.platform === "win32" ? execSync(`az ${azArgs.join(" ")}`, options) : execFileSync("az", azArgs, options)
     ).trim();
     if (token) return `Bearer ${token}`;
-  } catch {
-    // fall through
+  } catch (err) {
+    if (err?.code === "ETIMEDOUT")
+      fail(
+        `the Azure CLI did not return a token within ${AZ_TIMEOUT_MS / 1000}s; it may be waiting for a sign-in. ` +
+          "Run `az login` yourself, or set AZURE_DEVOPS_EXT_PAT. See references/setup.md.",
+        3
+      );
+    // otherwise: az is missing or not signed in, fall through
   }
   return undefined;
 }
@@ -251,8 +262,23 @@ function clip(text, budget) {
 
 // ---------- REST ----------
 
+function get(url, auth) {
+  return fetch(url, {
+    headers: { Authorization: auth, Accept: "application/json" },
+    signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
+  });
+}
+
 async function request(url, auth) {
-  const res = await fetch(url, { headers: { Authorization: auth, Accept: "application/json" } });
+  let res;
+  try {
+    res = await get(url, auth);
+  } catch (err) {
+    const host = new URL(url).host;
+    const reason =
+      err?.name === "TimeoutError" ? `no answer within ${HTTP_TIMEOUT_MS / 1000}s` : err?.cause?.code || err?.cause?.message || err?.message;
+    fail(`could not reach ${host} (${reason}). Behind a proxy or VPN? See references/setup.md.`, 3);
+  }
   if ([203, 401, 403].includes(res.status)) fail(`not authorised (HTTP ${res.status}). See references/setup.md.`, 3);
   return res;
 }
@@ -278,7 +304,7 @@ async function getItem(org, auth, id) {
 // Who is signed in, so their own items can be shown as "You" instead of a person label.
 async function getMe(org, auth) {
   try {
-    const res = await fetch(`${org}/_apis/connectionData`, { headers: { Authorization: auth, Accept: "application/json" } });
+    const res = await get(`${org}/_apis/connectionData`, auth);
     if (!res.ok) return undefined;
     const user = (await res.json()).authenticatedUser;
     return user && { id: user.id, displayName: user.providerDisplayName || user.customDisplayName || "" };

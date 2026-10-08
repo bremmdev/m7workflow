@@ -11,6 +11,16 @@ The script tries these in order:
 
 If neither works the script stops with exit code 3. HTTP 203, 401 or 403 means the credentials were sent but not accepted: the PAT expired or lacks the scope, or the `az` account is not in the organisation's tenant (`az login --tenant <tenant>`).
 
+If `az` does not answer within 30 seconds, the script stops with exit code 3 instead of waiting. This happens when the Azure CLI wants an interactive sign-in, for example when an earlier session has expired. Run `az login` yourself and try again.
+
+## Network
+
+Every request to Azure DevOps times out after 30 seconds, and the script stops with exit code 3 and "could not reach". On a company network this usually means a proxy. Node's `fetch` ignores `HTTPS_PROXY` unless `NODE_USE_ENV_PROXY=1` is also set (Node 24 or later):
+
+```sh
+NODE_USE_ENV_PROXY=1 HTTPS_PROXY=http://proxy.example.com:8080 node scripts/fetch-pbi.mjs
+```
+
 ## Organisation
 
 Read from the `origin` remote. These forms are recognised:
@@ -60,6 +70,7 @@ If your process uses other portfolio levels (for example *Initiative*), set `M7_
 | `AZURE_DEVOPS_ORG_URL` | Organisation URL when the remote is not on Azure DevOps. |
 | `M7_ADO_BRANCH_PATTERN` | Regex with one capture group for the id. |
 | `M7_ADO_PORTFOLIO_TYPES` | Comma-separated work item types above backlog items. Default `Epic,Feature`. |
+| `HTTPS_PROXY` + `NODE_USE_ENV_PROXY=1` | Send requests through a proxy (Node 24+). |
 
 ## What is fetched
 

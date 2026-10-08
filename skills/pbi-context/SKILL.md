@@ -1,8 +1,9 @@
 ---
-name: pbi-context
+
+## name: pbi-context
+
 description: Reads the Azure DevOps work item (PBI, user story, bug or task) behind the current git branch and checks the branch's changes against its acceptance criteria. Use when asked about the current ticket or its acceptance criteria (AC, acceptatiecriteria), or whether the branch builds what it asks. Read-only; not for creating or updating work items.
 license: MIT
----
 
 # PBI context
 
@@ -10,7 +11,7 @@ Mid-implementation it is easy to lose track of what the ticket actually asks for
 
 **Read-only.** The script only sends GET requests. Never create, edit, comment on or change the state of a work item, even when asked as part of this skill; point the user to Azure DevOps instead.
 
-**No personal information about colleagues.** The script never outputs names, e-mail addresses, phone numbers or user ids: people appear as labels (*Person A*, *Person B*, *You*) and assignment only as *assigned to you*, *assigned to someone else* or *unassigned*. Keep it that way:
+**No personal information about colleagues.** The script never outputs names, e-mail addresses, phone numbers or user ids: people appear as labels (_Person A_, _Person B_, _You_) and assignment only as _assigned to you_, _assigned to someone else_ or _unassigned_. Keep it that way:
 
 - Refer to people only by those labels, or by a role the text itself states ("the product owner").
 - If a name or other personal detail slips through in ticket text, do not repeat it, and tell the user so the scrubbing can be improved.
@@ -35,7 +36,7 @@ From the repository root, run `node <skill folder>/scripts/fetch-pbi.mjs`. It ta
 
 Options: `--id <number>` for another item, `--full` when the output says something was truncated and it matters.
 
-Exit code 2: no id in the branch name or no Azure DevOps remote; ask the user for the id or follow [`references/setup.md`](references/setup.md). Exit code 3: not signed in or no access; show the message and point to the setup reference. Do not try other ways to reach Azure DevOps.
+Exit code 2: no id in the branch name or no Azure DevOps remote; ask the user for the id or follow `[references/setup.md](references/setup.md)`. Exit code 3: not signed in, no access, or Azure DevOps could not be reached in time; show the message and point to the setup reference. Do not try other ways to reach Azure DevOps.
 
 ### 2. Assemble the criteria
 
@@ -57,7 +58,7 @@ Resolve what you can, and show the rest:
 ### 3. Work out the scope of the branch
 
 - **Branch item is the backlog item**: all criteria apply to the branch, unless a criterion clearly belongs to a sibling task that is done or assigned to someone else. Say which ones you set aside and why.
-- **Branch item is a task**: the branch delivers the task. Its own description and criteria apply in full. Of the backlog item's criteria, apply the ones the task covers. Mark the others as *covered by task <id>* when a sibling task's title or description matches, or *not covered by any task* when none does. That last group is worth telling the user about: it may be a gap in the breakdown.
+- **Branch item is a task**: the branch delivers the task. Its own description and criteria apply in full. Of the backlog item's criteria, apply the ones the task covers. Mark the others as _covered by task_ when a sibling task's title or description matches, or _not covered by any task_ when none does. That last group is worth telling the user about: it may be a gap in the breakdown.
 
 ### 4. Answer
 
@@ -86,5 +87,5 @@ Keep work item text in the conversation. Do not copy it into commits, pull reque
 
 ## References
 
-- [`references/setup.md`](references/setup.md): sign-in, organisation detection, branch name patterns, work item types, what is fetched and how personal information is removed.
+- `[references/setup.md](references/setup.md)`: sign-in, organisation detection, branch name patterns, work item types, what is fetched and how personal information is removed.
 - `scripts/fetch-pbi.mjs`: the fetcher (Node 18+, no dependencies).
